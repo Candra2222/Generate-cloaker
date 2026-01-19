@@ -24,11 +24,11 @@ export default async function handler(req, res) {
   });
 
   const site = await siteRes.json();
-  if (!site.id) return res.status(500).json(site);
+  if (!site_id) return res.status(500).json(site);
 
   // 2. Deploy file
   const deployRes = await fetch(
-    `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
+    `https://api.netlify.com/api/v1/sites/${site_id}/deploys`,
     {
       method: 'POST',
       headers: {
