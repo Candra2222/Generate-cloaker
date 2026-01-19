@@ -4,8 +4,10 @@ export default async function handler(req, res) {
   }
 
   const NETLIFY_TOKEN = process.env.NETLIFY_TOKEN;
-  if (!NETLIFY_TOKEN) {
-    return res.status(500).json({ error: 'NETLIFY_TOKEN belum diset' });
+  const SITE_ID = process.env.NETLIFY_SITE_ID;
+
+  if (!NETLIFY_TOKEN || !SITE_ID) {
+    return res.status(500).json({ error: 'ENV Netlify belum lengkap' });
   }
 
   const { files } = req.body;
@@ -13,22 +15,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Tidak ada file' });
   }
 
-  // 1. Buat site baru
-  const siteRes = await fetch('https://api.netlify.com/api/v1/sites', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${NETLIFY_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({})
-  });
-
-  const site = await siteRes.json();
-  if (!site.id) return res.status(500).json(site);
-
-  // 2. Deploy file
+  // Deploy ke site yang sama
   const deployRes = await fetch(
-    `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
+    `https://api.netlify.com/api/v1/sites/${SITE_ID}/deploys`,
     {
       method: 'POST',
       headers: {
@@ -42,7 +31,7 @@ export default async function handler(req, res) {
   const deploy = await deployRes.json();
 
   res.json({
-    url: site.ssl_url || site.url,
+    url: deploy.ssl_url || deploy.url,
     state: deploy.state
   });
 }
