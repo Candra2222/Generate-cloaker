@@ -1,16 +1,11 @@
-module.exports = async function handler(req, res) {
+module.exports = async (req, res) => {
   try {
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     }
 
-    let body = req.body;
+    const { files } = req.body || {};
 
-    if (!body || typeof body !== 'object') {
-      return res.status(400).json({ error: 'INVALID_BODY' });
-    }
-
-    const files = body.files;
     if (!files || !files['index.html']) {
       return res.status(400).json({
         error: 'FILES_REQUIRED',
@@ -41,7 +36,7 @@ module.exports = async function handler(req, res) {
     const site = await siteRes.json();
     if (!site.id) return res.status(500).json(site);
 
-    // Deploy
+    // Deploy files
     const deployRes = await fetch(
       `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
       {
@@ -61,10 +56,10 @@ module.exports = async function handler(req, res) {
       state: deploy.state
     });
 
-  } catch (e) {
+  } catch (err) {
     return res.status(500).json({
       error: 'SERVER_ERROR',
-      message: e.message
+      message: err.message
     });
   }
 };
