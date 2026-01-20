@@ -1,10 +1,11 @@
-module.exports = async (req, res) => {
+module.exports = async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     }
 
-    const { files } = req.body || {};
+    const body = req.body || {};
+    const files = body.files;
 
     if (!files || !files['index.html']) {
       return res.status(400).json({
@@ -22,7 +23,7 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'NETLIFY_TOKEN_MISSING' });
     }
 
-    // Create site
+    // create site
     const siteRes = await fetch(
       'https://api.netlify.com/api/v1/sites',
       {
@@ -36,7 +37,7 @@ module.exports = async (req, res) => {
     const site = await siteRes.json();
     if (!site.id) return res.status(500).json(site);
 
-    // Deploy files
+    // deploy files
     const deployRes = await fetch(
       `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
       {
@@ -56,10 +57,10 @@ module.exports = async (req, res) => {
       state: deploy.state
     });
 
-  } catch (err) {
+  } catch (e) {
     return res.status(500).json({
       error: 'SERVER_ERROR',
-      message: err.message
+      message: e.message
     });
   }
 };
