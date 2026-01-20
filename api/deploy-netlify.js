@@ -1,14 +1,19 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
 
-  const { files } = req.body || {};
+  // DEBUG: pastikan body benar-benar masuk
+  if (!req.body) {
+    return res.status(400).json({ error: 'BODY_EMPTY' });
+  }
+
+  const { files } = req.body;
 
   if (!files || !files['index.html']) {
     return res.status(400).json({
       error: 'FILES_INVALID',
-      detail: req.body
+      body: req.body
     });
   }
 
@@ -17,19 +22,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'NETLIFY_TOKEN_NOT_SET' });
   }
 
-  // 1️⃣ CREATE SITE
+  // 1. Create site
   const siteRes = await fetch('https://api.netlify.com/api/v1/sites', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${token}`
     }
   });
 
   const site = await siteRes.json();
   if (!site.id) return res.status(500).json(site);
 
-  // 2️⃣ DEPLOY
+  // 2. Deploy files
   const deployRes = await fetch(
     `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
     {
@@ -44,7 +48,7 @@ export default async function handler(req, res) {
 
   const deploy = await deployRes.json();
 
-  res.json({
+  return res.json({
     url: site.ssl_url || site.url,
     state: deploy.state
   });
