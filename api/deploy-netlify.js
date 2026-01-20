@@ -1,14 +1,31 @@
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const token = process.env.NETLIFY_TOKEN;
-  if (!token) {
-    return res.status(500).json({ error: 'NETLIFY_TOKEN_NOT_SET' });
+  // 🔥 PARSE BODY MANUAL (FIX unexpected end of input)
+  let rawBody = '';
+  for await (const chunk of req) {
+    rawBody += chunk;
   }
 
-  const { files } = req.body;
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch (e) {
+    return res.status(400).json({
+      error: 'INVALID_JSON',
+      detail: e.message
+    });
+  }
+
+  const { files } = body;
 
   if (!files || !files['index.html']) {
     return res.status(400).json({
@@ -17,22 +34,24 @@ export default async function handler(req, res) {
     });
   }
 
+  const token = process.env.NETLIFY_TOKEN;
+  if (!token) {
+    return res.status(500).json({ error: 'NETLIFY_TOKEN_NOT_SET' });
+  }
+
   // 1️⃣ CREATE SITE
-  const siteRes = await fetch(
-    'https://api.netlify.com/api/v1/sites',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+  const siteRes = await fetch('https://api.netlify.com/api/v1/sites', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
-  );
+  });
 
   const site = await siteRes.json();
   if (!site.id) return res.status(500).json(site);
 
-  // 2️⃣ CREATE DEPLOY
+  // 2️⃣ DEPLOY FILES
   const deployRes = await fetch(
     `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
     {
