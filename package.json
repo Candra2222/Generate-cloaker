@@ -1,5 +1,4 @@
 {
   "name": "generate-cloaker",
-  "private": true,
-  "type": "commonjs"
+  "private": true
 }
