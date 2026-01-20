@@ -1,36 +1,14 @@
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 🔥 PARSE BODY MANUAL (FIX unexpected end of input)
-  let rawBody = '';
-  for await (const chunk of req) {
-    rawBody += chunk;
-  }
-
-  let body;
-  try {
-    body = JSON.parse(rawBody);
-  } catch (e) {
-    return res.status(400).json({
-      error: 'INVALID_JSON',
-      detail: e.message
-    });
-  }
-
-  const { files } = body;
+  const { files } = req.body || {};
 
   if (!files || !files['index.html']) {
     return res.status(400).json({
       error: 'FILES_INVALID',
-      message: 'Minimal harus ada index.html'
+      detail: req.body
     });
   }
 
@@ -51,7 +29,7 @@ export default async function handler(req, res) {
   const site = await siteRes.json();
   if (!site.id) return res.status(500).json(site);
 
-  // 2️⃣ DEPLOY FILES
+  // 2️⃣ DEPLOY
   const deployRes = await fetch(
     `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
     {
@@ -68,6 +46,6 @@ export default async function handler(req, res) {
 
   res.json({
     url: site.ssl_url || site.url,
-    deploy_state: deploy.state
+    state: deploy.state
   });
 }
