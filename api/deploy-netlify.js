@@ -3,25 +3,42 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const NETLIFY_TOKEN = process.env.NETLIFY_TOKEN;
-  const SITE_ID = process.env.NETLIFY_SITE_ID;
-
-  if (!NETLIFY_TOKEN || !SITE_ID) {
-    return res.status(500).json({ error: 'ENV Netlify belum lengkap' });
+  const token = process.env.NETLIFY_TOKEN;
+  if (!token) {
+    return res.status(500).json({ error: 'NETLIFY_TOKEN_NOT_SET' });
   }
 
   const { files } = req.body;
-  if (!files || Object.keys(files).length === 0) {
-    return res.status(400).json({ error: 'Tidak ada file' });
+
+  if (!files || !files['index.html']) {
+    return res.status(400).json({
+      error: 'FILES_INVALID',
+      message: 'Minimal harus ada index.html'
+    });
   }
 
-  // Deploy ke site yang sama
-  const deployRes = await fetch(
-    `https://api.netlify.com/api/v1/sites/${SITE_ID}/deploys`,
+  // 1️⃣ CREATE SITE
+  const siteRes = await fetch(
+    'https://api.netlify.com/api/v1/sites',
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${NETLIFY_TOKEN}`,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const site = await siteRes.json();
+  if (!site.id) return res.status(500).json(site);
+
+  // 2️⃣ CREATE DEPLOY
+  const deployRes = await fetch(
+    `https://api.netlify.com/api/v1/sites/${site.id}/deploys`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ files })
@@ -31,7 +48,7 @@ export default async function handler(req, res) {
   const deploy = await deployRes.json();
 
   res.json({
-    url: deploy.ssl_url || deploy.url,
-    state: deploy.state
+    url: site.ssl_url || site.url,
+    deploy_state: deploy.state
   });
 }
